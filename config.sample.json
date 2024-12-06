@@ -1,0 +1,77 @@
+{
+	"sources": {
+		"router": {
+			"type": "snmp",
+			"version": "v2c",
+			"community": "public",
+			"target": "10.0.0.1",
+			"port": 161,
+			"interfaceName": "eth0",
+			"ipType": "A"
+		},
+		"server": {
+			"type": "dns",
+			"dnsServer": "10.0.0.1",
+			"domain": "server.internal",
+			"ipType": "AAAA"
+		},
+		"static": {
+			"type": "static",
+			"ips": [
+				"192.168.0.1"
+			]
+		},
+		"webservicev4": {
+			"type": "web",
+			"url": "https://v4.ident.me/"
+		},
+		"webservicev6": {
+			"type": "web",
+			"url": "https://api64.ipify.org/"
+		}
+	},
+	"sinks": {
+		"cloudflare": {
+			"type": "cloudflare",
+			"apiToken": "TOKEN",
+			"zones": [
+				{
+					"name": "example.com",
+					"records": [
+						{
+							"domain": "server",
+							"sources": {
+								"A": "router",
+								"AAAA": "server"
+							},
+							"ttl": 60,
+							"extra": {
+								"proxied": false
+							}
+						}
+					]
+				}
+			]
+		},
+		"technitium": {
+			"type": "rfc2136",
+			"host": "10.0.0.1",
+			"keyName": "tsig-key",
+			"keySecret": "TSIG-SECRET",
+			"zones": [
+				{
+					"name": "example.com",
+					"records": [
+						{
+							"domain": "server",
+							"sources": {
+								"A": "static"
+							},
+							"ttl": 60
+						}
+					]
+				}
+			]
+		}
+	}
+}
