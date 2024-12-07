@@ -47,14 +47,13 @@ The `transforms` section defines which sources IPs are taken from, and how they 
     "trackip": {
         "type": "trackipv6",
         "trackSource": "routerv6",
-        "trackIpSuffix": "::a6a2:0607:a36b:1929",
         "trackPrefixLength": 64,
         "ipSource": "server"
     }
 }
 ```
 
-Each transform is referenced by its name, in this case `trackip`. It has a type of `trackipv6`, meaning it will take in a list of IPv6 IPs, and replace their prefix with the prefix from the tracking source. This is used in conjunction with NPTv6 prefix translation. In this case, it will get the list of IPs from `routerv6`. Because IP lists may contain multiple different IPs, it will look for the one ending in `a6a2:0607:a36b:1929` and use that as the only source IP. It will then get the prefix of that IP based on the prefix length, and apply it to all internal IPs.
+Each transform is referenced by its name, in this case `trackip`. It has a type of `trackipv6`, meaning it will take in a list of IPv6 IPs, and replace their prefix with the prefix from the tracking source. This is used in conjunction with NPTv6 prefix translation. In this case, it will get the list of IPs from `routerv6`. Because IP lists may contain multiple IPs, it is recommended to first use a filter transform to filter out only the desired IP. In the event that there are multiple IPs present though, the first IP will be chosen to track the prefix. The prefix is then calculated based on the prefix length, and applied to all internal IPs.
 
 NOTE: Currently transformations are processed in the same order they are defined in the config. This means that if you want to chain transformations, the first transformation must be listed first, and the one that depends on it must come after.
 

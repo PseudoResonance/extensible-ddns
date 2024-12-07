@@ -8,22 +8,10 @@ async def transform_ips(config, ipRecord, verbose=False):
     if config["ipSource"] not in ipRecord:
         raise ValueError(
             "TrackIPv6: IP source does not exist: " + config["ipSource"])
-    try:
-        ipSuffix = ipaddress.ip_address(config["trackIpSuffix"])
-    except ValueError:
-        raise ValueError("TrackIPv6: Track IP Suffix is invalid: " +
-                         config["trackIpSuffix"])
-    groups = str(ipSuffix)[1:].count(":")
-    suffix = ipSuffix.exploded[groups * -5:]
-    trackIp = None
-    for ip in ipRecord[config["trackSource"]]:
-        ipAddr = ipaddress.ip_address(ip)
-        if ipAddr.exploded.endswith(suffix):
-            trackIp = ipAddr
-            break
-    if trackIp is None:
-        raise ValueError("TrackIPv6: Unable to find IP with suffix: " +
-                         config["trackIpSuffix"])
+    if len(ipRecord[config["trackSource"]]) == 0:
+        raise ValueError("TrackIPv6: Tracked IP source is empty: " +
+                         config["trackSource"])
+    trackIp = ipaddress.ip_address(ipRecord[config["trackSource"]][0])
     prefixLength = int(config["trackPrefixLength"])
     if prefixLength < 0 or prefixLength > 128:
         raise ValueError("TrackIPv6: Invalid prefix length: " +
@@ -39,5 +27,5 @@ async def transform_ips(config, ipRecord, verbose=False):
         # Combine prefix and suffix
         translatedIp = ipaddress.ip_address(
             (prefix | suffix).to_bytes(16, 'big'))
-        translatedIps.append(translatedIp.compressed)
+        translatedIps.append(str(translatedIp))
     return translatedIps
