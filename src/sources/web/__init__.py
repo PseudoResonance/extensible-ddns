@@ -2,7 +2,7 @@ import ipaddress
 import urllib.request
 
 
-async def fetch_ip(config):
+async def fetch_ip(config, verbose=False):
     public_ip = urllib.request.urlopen(config["url"]).read().decode('utf8')
     try:
         return [str(ipaddress.ip_address(public_ip))]

@@ -4,13 +4,16 @@ A simple, extensible DDNS script designed to be easily modified to support any D
 
 ## Configuration
 
-A [sample config file](config.sample.json) is provided with sample configurations for each supported DNS provider and IP source.
+A [sample config file](config.sample.json) is provided with sample configurations for each supported DNS provider, IP source and IP transform.
 
 ### IP Sources
 - DNS
 - SNMP
 - Static IP
 - Public Web Service
+
+### IP Transformations
+- Track IPv6
 
 ### Sinks/DNS Providers
 - Cloudflare
@@ -34,6 +37,26 @@ The `sources` section defines where IPs are fetched from. The following is an ex
 ```
 
 Each source is referenced by its name, in this case `server`. It has a type of `dns`, meaning it will use a DNS server to fetch IPs. In this case, it will contact the server at `10.0.0.1` for all `AAAA` or IPv6 records for the domain `server.internal`.
+
+#### Transforms
+
+The `transforms` section defines which sources IPs are taken from, and how they will be modified. The following is an example transform configuration:
+
+```json
+"transforms": {
+    "trackip": {
+        "type": "trackipv6",
+        "trackSource": "routerv6",
+        "trackIpSuffix": "::a6a2:0607:a36b:1929",
+        "trackPrefixLength": 64,
+        "ipSource": "server"
+    }
+}
+```
+
+Each transform is referenced by its name, in this case `trackip`. It has a type of `trackipv6`, meaning it will take in a list of IPv6 IPs, and replace their prefix with the prefix from the tracking source. This is used in conjunction with NPTv6 prefix translation. In this case, it will get the list of IPs from `routerv6`. Because IP lists may contain multiple different IPs, it will look for the one ending in `a6a2:0607:a36b:1929` and use that as the only source IP. It will then get the prefix of that IP based on the prefix length, and apply it to all internal IPs.
+
+NOTE: Currently transformations are processed in the same order they are defined in the config. This means that if you want to chain transformations, the first transformation must be listed first, and the one that depends on it must come after.
 
 #### Sinks/DNS Providers
 

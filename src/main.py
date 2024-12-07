@@ -42,12 +42,24 @@ async def main():
             conf = config["sources"][source]
             module = importlib.import_module(
                 "sources." + conf["type"])
-            ipRecord[source] = await module.fetch_ip(conf)
+            ipRecord[source] = await module.fetch_ip(conf, verbose=args.verbose)
         except Exception:
             print("Error while fetching IPs for " + source + ":")
             print(traceback.format_exc())
     if args.dryrun or args.verbose:
         print("Fetched IPs")
+        print(util.print.format_iprecords(ipRecord))
+    for transform in config["transforms"]:
+        try:
+            conf = config["transforms"][transform]
+            module = importlib.import_module(
+                "transforms." + conf["type"])
+            ipRecord[transform] = await module.transform_ips(conf, ipRecord, verbose=args.verbose)
+        except Exception:
+            print("Error while transforming IPs with " + transform + ":")
+            print(traceback.format_exc())
+    if len(config["transforms"]) > 0 and (args.dryrun or args.verbose):
+        print("Transformed IPs")
         print(util.print.format_iprecords(ipRecord))
     for sink in config["sinks"]:
         try:

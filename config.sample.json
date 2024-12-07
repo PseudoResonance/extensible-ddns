@@ -9,6 +9,15 @@
 			"interfaceName": "eth0",
 			"ipType": "A"
 		},
+		"routerv6": {
+			"type": "snmp",
+			"version": "v2c",
+			"community": "public",
+			"target": "10.0.0.1",
+			"port": 161,
+			"interfaceName": "eth1",
+			"ipType": "AAAA"
+		},
 		"server": {
 			"type": "dns",
 			"dnsServer": "10.0.0.1",
@@ -28,6 +37,15 @@
 		"webservicev6": {
 			"type": "web",
 			"url": "https://api64.ipify.org/"
+		}
+	},
+	"transforms": {
+		"trackip": {
+			"type": "trackipv6",
+			"trackSource": "routerv6",
+			"trackIpSuffix": "::a6a2:0607:a36b:1929",
+			"trackPrefixLength": 64,
+			"ipSource": "server"
 		}
 	},
 	"sinks": {
@@ -65,7 +83,8 @@
 						{
 							"domain": "server",
 							"sources": {
-								"A": "static"
+								"A": "static",
+								"AAAA": "trackip"
 							},
 							"ttl": 60
 						}

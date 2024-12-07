@@ -117,7 +117,7 @@ async def snmp_fetch_interface_dict(config):
     return results
 
 
-async def fetch_ip(config):
+async def fetch_ip(config, verbose=False):
     interfaces = await snmp_fetch_interface_dict(config)
     id = -1
     for x in interfaces:

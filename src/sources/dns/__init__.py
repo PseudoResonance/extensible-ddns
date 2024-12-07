@@ -2,7 +2,7 @@ import ipaddress
 import dns.resolver
 
 
-async def fetch_ip(config):
+async def fetch_ip(config, verbose=False):
     queryResult = dns.resolver.resolve_at(
         config["dnsServer"], config["domain"], config["ipType"]
     )
