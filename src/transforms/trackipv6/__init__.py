@@ -1,7 +1,7 @@
 import ipaddress
 
 
-async def transform_ips(config, ipRecord, verbose=False) -> None:
+async def transform_ips(config, ipRecord, verbose=False):
     if config["trackSource"] not in ipRecord:
         raise ValueError("TrackIPv6: Tracked IP source does not exist: " +
                          config["trackSource"])
