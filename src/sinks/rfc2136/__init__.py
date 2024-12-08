@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import dataclasses
 import json
 import dns.query
@@ -12,6 +12,7 @@ import dns.rdata
 import dns.rdataclass
 import dns.rdtypes
 from frozendict import frozendict
+from sources import SourceResult
 import util.records
 
 TXT_PREFIX = "ddns-managed-"
@@ -23,6 +24,7 @@ class ManagedRecord:
     type: str
     ttl: int
     content: str
+    source: str = field(compare=False)
 
 
 def decode_json(rData) -> ManagedRecord:
@@ -34,14 +36,15 @@ def encode_json(data: ManagedRecord) -> str:
     return json.dumps(dataclasses.asdict(data), separators=(',', ':'))[1:-1]
 
 
-async def update_ips(config, ipRecord, dryrun=False, verbose=False):
+async def update_ips(config, ipRecord: dict[str, SourceResult], dryrun=False, verbose=False):
     tsig_keyring = dns.tsigkeyring.from_text(
         {config["keyName"]: config["keySecret"]}
     )
     finalZoneState = []
     for zone in config["zones"]:
         zoneName = dns.name.from_text(zone["name"])
-        plan = util.records.calculate_records(zone["records"], ipRecord)
+        plan, ignored_sources = util.records.calculate_records(
+            zone["records"], ipRecord)
         if verbose:
             print("RFC2136: Planned records:", plan)
         state = []
@@ -54,26 +57,29 @@ async def update_ips(config, ipRecord, dryrun=False, verbose=False):
         for recordName, _, rData in dnsZone.iterate_rdatas(dns.rdatatype.TXT):
             try:
                 if recordName.to_text().startswith(TXT_PREFIX):
-                    managedRecords.append(decode_json(rData))
+                    recordData = decode_json(rData)
+                    if recordData.source not in ignored_sources:
+                        managedRecords.append(recordData)
             except Exception as e:
-                print("RFC2136: Error decoding comment for record: " +
-                      recordName.to_text(), e)
+                print(f"RFC2136: Error decoding comment for record: {
+                      recordName.to_text()}", e)
         for recordName, ttl, rData in dnsZone.iterate_rdatas():
             try:
                 searchRecord = None
                 match rData.rdtype:
                     case dns.rdatatype.A | dns.rdatatype.AAAA:
                         searchRecord = ManagedRecord(recordName.to_text().lower(
-                        ), dns.rdatatype.to_text(rData.rdtype).lower(), ttl, rData.to_text().lower())
+                        ), dns.rdatatype.to_text(rData.rdtype).lower(), ttl, rData.to_text().lower(), "")
                     case _:
                         continue
                 if searchRecord in managedRecords:
+                    recordIndex = managedRecords.index(searchRecord)
                     state.append(util.records.Record(searchRecord.content, searchRecord.type.upper(),
-                                                     searchRecord.name, ttl, frozendict({}), frozendict({})))
+                                                     searchRecord.name, ttl, frozendict({}), frozendict({"source": managedRecords[recordIndex].source})))
                     managedRecords.remove(searchRecord)
             except Exception as e:
-                print("RFC2136: Error checking record: " +
-                      recordName.to_text(), e)
+                print(f"RFC2136: Error checking record: {
+                      recordName.to_text()}", e)
         if len(managedRecords) > 0:
             print("RFC2136: Unable to find the following records:", managedRecords)
         if verbose:
@@ -96,7 +102,7 @@ async def update_ips(config, ipRecord, dryrun=False, verbose=False):
                     rdclass=dns.rdataclass.IN, rdtype=dns.rdatatype.from_text(record.type), origin=zoneName, tok=record.content))
                 update.delete(f"{TXT_PREFIX}{record.type.lower()}-{record.domain.lower()}",
                               dns.rdtypes.ANY.TXT.TXT(
-                    rdclass=dns.rdataclass.IN, rdtype=dns.rdatatype.TXT, strings=[encode_json(ManagedRecord(record.domain.lower(), record.type.lower(), record.ttl, record.content.lower()))]))
+                    rdclass=dns.rdataclass.IN, rdtype=dns.rdatatype.TXT, strings=[encode_json(ManagedRecord(record.domain.lower(), record.type.lower(), record.ttl, record.content.lower(), record.internal["source"]))]))
                 result = dns.query.tcp(update, config["host"], timeout=5)
                 if result.rcode().value == 0:
                     state.remove(record)
@@ -117,7 +123,7 @@ async def update_ips(config, ipRecord, dryrun=False, verbose=False):
                 update.add(record.domain, record.ttl,
                            dns.rdata.from_text(rdclass=dns.rdataclass.IN, rdtype=dns.rdatatype.from_text(record.type), origin=zoneName, tok=record.content))
                 update.add(f"{TXT_PREFIX}{record.type.lower()}-{record.domain.lower()}", 0, dns.rdtypes.ANY.TXT.TXT(
-                    rdclass=dns.rdataclass.IN, rdtype=dns.rdatatype.TXT, strings=[encode_json(ManagedRecord(record.domain.lower(), record.type.lower(), record.ttl, record.content.lower()))]))
+                    rdclass=dns.rdataclass.IN, rdtype=dns.rdatatype.TXT, strings=[encode_json(ManagedRecord(record.domain.lower(), record.type.lower(), record.ttl, record.content.lower(), record.internal["source"]))]))
                 result = dns.query.tcp(update, config["host"], timeout=5)
                 if result.rcode().value == 0:
                     state.append(util.records.Record(record.content, record.type,

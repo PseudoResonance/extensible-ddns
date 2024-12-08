@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from frozendict import frozendict
 import numpy as np
 
+from sources import SourceResult
+
 
 @dataclass(frozen=True)
 class Record:
@@ -37,21 +39,26 @@ class RecordSet:
     updated: Record
 
 
-def calculate_records(configRecords, ipRecord) -> list[Record]:
+def calculate_records(configRecords, ipRecord: dict[str, SourceResult]) -> tuple[list[Record], set[str]]:
     plan = []
+    ignored_sources = set()
     for record in configRecords:
         for type in record["sources"]:
             if record["sources"][type] not in ipRecord:
-                print("No IPs from source: " + record["sources"][type])
+                print(f"No IPs from source: {record["sources"][type]}")
+            elif not ipRecord[record["sources"][type]].status:
+                print(f"Source failed to run, ignoring this time: {
+                      record["sources"][type]}")
+                ignored_sources.add(record["sources"][type])
             else:
                 extra = {}
                 if "extra" in record:
                     extra = record["extra"]
-                ips = ipRecord[record["sources"][type]]
+                ips = ipRecord[record["sources"][type]].ips
                 for ip in ips:
                     plan.append(
-                        Record(ip, type, record["domain"], record["ttl"], frozendict(extra)))
-    return plan
+                        Record(ip, type, record["domain"], record["ttl"], frozendict(extra), frozendict({"source": record["sources"][type]})))
+    return plan, ignored_sources
 
 
 def calculate_update(to_add: list[Record], to_delete: list[Record]) -> tuple[list[RecordSet], list[Record], list[Record]]:

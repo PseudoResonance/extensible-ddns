@@ -1,5 +1,7 @@
 import ipaddress
 
+from sources import SourceResult
+
 
 async def fetch_ip(config, verbose=False):
     ips = []
@@ -8,12 +10,13 @@ async def fetch_ip(config, verbose=False):
     if "ip" in config:
         ips.append(config["ip"])
     if len(ips) == 0:
-        raise ValueError("Static: Config missing ips field")
+        print("Static: Config missing ips field")
+        return SourceResult(False, [])
     ipsFiltered = []
     for entry in ips:
         try:
             ipsFiltered.append(
                 str(ipaddress.ip_address(entry)))
         except ValueError:
-            print("Static: Invalid IP: " + entry)
-    return ipsFiltered
+            print(f"Static: Invalid IP: {entry}")
+    return SourceResult(True, ipsFiltered)

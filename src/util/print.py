@@ -1,4 +1,7 @@
 # From https://stackoverflow.com/a/23816211
+from sources import SourceResult
+
+
 def format_request(req, headers=False):
     if headers:
         return '{}\n{}\r\n{}\r\n\r\n{}\n{}'.format(
@@ -17,14 +20,15 @@ def format_request(req, headers=False):
         )
 
 
-def format_iprecords(ipRecord):
+def format_iprecords(ipRecord: dict[str, SourceResult]):
     ret = ""
-    for source, ips in ipRecord.items():
+    for source, recordData in ipRecord.items():
         ret += '{}{}{}\n{}\n{}{}{}\n'.format(
             '-----------',
             source,
             '-----------',
-            '\n'.join(ips),
+            '\n'.join(
+                recordData.ips) if recordData.status else "FAILED TO UPDATE",
             '-----------',
             source,
             '-----------',

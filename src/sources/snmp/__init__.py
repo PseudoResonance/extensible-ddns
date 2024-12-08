@@ -1,6 +1,8 @@
 import ipaddress
 import pysnmp.hlapi.v3arch.asyncio as pysnmp
 
+from sources import SourceResult
+
 
 async def snmp_fetch_ip_dict(config):
     """
@@ -27,12 +29,8 @@ async def snmp_fetch_ip_dict(config):
             print(errorIndication)
             break
         elif errorStatus:
-            print(
-                "{} at {}".format(
-                    errorStatus.prettyPrint(),
-                    errorIndex and varBinds[int(errorIndex) - 1][0] or "?",
-                )
-            )
+            print(f"{errorStatus.prettyPrint()} at {
+                errorIndex and varBinds[int(errorIndex) - 1][0] or "?"}")
         else:
             for varBind in varBindTable:
                 if varBind[0].prettyPrint().startswith(initialVarBinds):
@@ -48,7 +46,7 @@ async def snmp_fetch_ip_dict(config):
                             results[int(varBind[1])]["A"].append(
                                 str(ipaddress.ip_address(ipAddress)))
                         except ValueError:
-                            print("SNMP: Invalid IP: " + ipAddress)
+                            print(f"SNMP: Invalid IP: {ipAddress}")
                     elif varBind[0][10] == 2:
                         # Format IPv6 in human format
                         ipAddress = ":".join(
@@ -59,7 +57,7 @@ async def snmp_fetch_ip_dict(config):
                             results[int(varBind[1])]["AAAA"].append(
                                 str(ipaddress.ip_address(ipAddress)))
                         except ValueError:
-                            print("SNMP: Invalid IP: " + ipAddress)
+                            print(f"SNMP: Invalid IP: {ipAddress}")
 
                 else:
                     # Stop when returned OID is no longer within desired range
@@ -94,12 +92,8 @@ async def snmp_fetch_interface_dict(config):
             print(errorIndication)
             break
         elif errorStatus:
-            print(
-                "{} at {}".format(
-                    errorStatus.prettyPrint(),
-                    errorIndex and varBinds[int(errorIndex) - 1][0] or "?",
-                )
-            )
+            print(f"{errorStatus.prettyPrint()} at {
+                errorIndex and varBinds[int(errorIndex) - 1][0] or "?"}")
         else:
             for varBind in varBindTable:
                 if varBind[0].prettyPrint().startswith(initialVarBinds):
@@ -118,21 +112,23 @@ async def snmp_fetch_interface_dict(config):
 
 
 async def fetch_ip(config, verbose=False):
-    interfaces = await snmp_fetch_interface_dict(config)
-    id = -1
-    for x in interfaces:
-        if interfaces[x] == config["interfaceName"]:
-            id = int(x)
-    if id < 0:
-        raise ValueError("SNMP: Unable to find interface " +
-                         config["interfaceName"])
-    ips = await snmp_fetch_ip_dict(config)
-    if id in ips:
-        if config["ipType"] in ips[id]:
-            return ips[id][config["ipType"]]
-    raise ValueError(
-        "SNMP: Unable to find "
-        + config["ipType"]
-        + " type for interface "
-        + config["interfaceName"]
-    )
+    try:
+        interfaces = await snmp_fetch_interface_dict(config)
+        id = -1
+        for x in interfaces:
+            if interfaces[x] == config["interfaceName"]:
+                id = int(x)
+        if id < 0:
+            raise ValueError(f"Unable to find interface {
+                             config["interfaceName"]}")
+        ips = await snmp_fetch_ip_dict(config)
+        if id in ips:
+            if config["ipType"] in ips[id]:
+                return SourceResult(True, ips[id][config["ipType"]])
+        raise ValueError(
+            f"Unable to find {config["ipType"]} type for interface {
+                config["interfaceName"]}"
+        )
+    except Exception as e:
+        print(f"SNMP: Error while fetching IPs: {e}")
+        return SourceResult(False, [])
