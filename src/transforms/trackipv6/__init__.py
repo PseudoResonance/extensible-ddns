@@ -39,6 +39,6 @@ async def transform_ips(config, ipRecord: dict[str, SourceResult], verbose=False
             ipaddress.ip_address(ip).packed, 'big') & ~((2**IPV6_BIT_LENGTH)-(2**(IPV6_BIT_LENGTH - prefixLength)))
         # Combine prefix and suffix
         translatedIp = ipaddress.ip_address(
-            (prefix | suffix).to_bytes(IPV6_BIT_LENGTH / 8, 'big'))
+            (prefix | suffix).to_bytes(int(IPV6_BIT_LENGTH / 8), 'big'))
         translatedIps.append(str(translatedIp))
     return SourceResult(True, translatedIps)
